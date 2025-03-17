@@ -15,9 +15,12 @@
   ],
   "author": "Julian Dierkes",
   "license": "ISC",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/Nas3nmann/terminservice-potsdam-bot/issues"
   },
   "homepage": "https://github.com/Nas3nmann/terminservice-potsdam-bot#readme",
-  "description": ""
+  "dependencies": {
+    "puppeteer": "^24.4.0"
+  }
 }
