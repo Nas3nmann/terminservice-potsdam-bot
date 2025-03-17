@@ -4,7 +4,10 @@ import cron from 'node-cron';
 
 async function scrapeAppointments() {
     // const browser = await puppeteer.launch({headless: false, slowMo: false});
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+        executablePath: '/usr/bin/google-chrome',
+        args: ['--no-sandbox'],
+    });
     const [page] = await browser.pages();
     await page.goto('https://egov.potsdam.de/tnv/bgr');
 
@@ -49,13 +52,19 @@ async function scrapeAppointments() {
             });
     });
 
+    await page.close()
     await browser.close()
     return freeAppointmentSlots;
 }
 
 async function sendViaTelegram(message) {
-    const telegraf = new Telegraf(process.env.BOT_TOKEN);
-    await telegraf.telegram.sendMessage(process.env.CHAT_ID, message);
+    if (process.env.BOT_TOKEN && process.env.CHAT_ID) {
+        const telegraf = new Telegraf(process.env.BOT_TOKEN);
+        await telegraf.telegram.sendMessage(process.env.CHAT_ID, message);
+        await telegraf.stop();
+    } else {
+        console.table(message);
+    }
 }
 
 async function sendAppointmentsViaTelegram(freeAppointments) {
@@ -65,14 +74,23 @@ async function sendAppointmentsViaTelegram(freeAppointments) {
 
 
 async function checkForFreeAppointments() {
-    let freeAppointments = await scrapeAppointments();
+    let freeAppointments = []
+    try {
+        freeAppointments = await scrapeAppointments();
+    } catch (error) {
+        console.error(error);
+    }
+
     if (freeAppointments.length > 0) {
         await sendAppointmentsViaTelegram(freeAppointments);
     }
 }
 
-[`exit`, `SIGINT`, `SIGUSR1`, `SIGUSR2`, `uncaughtException`, `SIGTERM`].forEach((eventType) => {
-    process.on(eventType, (args) => sendViaTelegram(`Process interrupted: ${args}`));
-})
+const scheduledTask = cron.schedule('*/2 * * * *', () => checkForFreeAppointments());
 
-cron.schedule('*/2 * * * *', checkForFreeAppointments);
+[`exit`, `SIGINT`, `SIGUSR1`, `SIGUSR2`, `uncaughtException`, `SIGTERM`].forEach((eventType) => {
+    process.on(eventType, (args) => {
+        sendViaTelegram(`Process interrupted: ${args}`);
+        scheduledTask.stop();
+    });
+})
