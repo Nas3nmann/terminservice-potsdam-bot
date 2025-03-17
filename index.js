@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer';
 import {Telegraf} from "telegraf";
+import cron from 'node-cron';
 
 async function scrapeAppointments() {
     // const browser = await puppeteer.launch({headless: false, slowMo: false});
@@ -52,14 +53,26 @@ async function scrapeAppointments() {
     return freeAppointmentSlots;
 }
 
-async function publishAppointmentsViaTelegramBot(freeAppointments) {
-    let message = `[${new Date().toLocaleDateString()}] New appointments found:\n${freeAppointments.map(appointment => `${appointment.date}: ${appointment.freeSlots}`).join('\n')}`;
-
+async function sendViaTelegram(message) {
     const telegraf = new Telegraf(process.env.BOT_TOKEN);
     await telegraf.telegram.sendMessage(process.env.CHAT_ID, message);
 }
 
-let freeAppointments = await scrapeAppointments();
-if (freeAppointments.length > 0) {
-    await publishAppointmentsViaTelegramBot(freeAppointments);
+async function sendAppointmentsViaTelegram(freeAppointments) {
+    let message = `[${new Date().toLocaleDateString()}] New appointments found:\n${freeAppointments.map(appointment => `${appointment.date}: ${appointment.freeSlots}`).join('\n')}`;
+    await sendViaTelegram(message);
 }
+
+
+async function checkForFreeAppointments() {
+    let freeAppointments = await scrapeAppointments();
+    if (freeAppointments.length > 0) {
+        await sendAppointmentsViaTelegram(freeAppointments);
+    }
+}
+
+[`exit`, `SIGINT`, `SIGUSR1`, `SIGUSR2`, `uncaughtException`, `SIGTERM`].forEach((eventType) => {
+    process.on(eventType, (args) => sendViaTelegram(`Process interrupted: ${args}`));
+})
+
+cron.schedule('*/2 * * * *', checkForFreeAppointments);
