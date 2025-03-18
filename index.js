@@ -86,11 +86,14 @@ async function checkForFreeAppointments() {
     }
 }
 
-const scheduledTask = cron.schedule('*/2 * * * *', () => checkForFreeAppointments());
+const scheduledTasks = [];
+scheduledTasks.push(cron.schedule('*/2 * * * *', () => checkForFreeAppointments()));
+scheduledTasks.push(cron.schedule('0 9 * * *', () => sendViaTelegram('Good morning. No new appointments yet.')));
+scheduledTasks.push(cron.schedule('0 20 * * *', () => sendViaTelegram('Good evening. No new appointments yet.')));
 
 [`exit`, `SIGINT`, `SIGUSR1`, `SIGUSR2`, `uncaughtException`, `SIGTERM`].forEach((eventType) => {
     process.on(eventType, (args) => {
         sendViaTelegram(`Process interrupted: ${args}`);
-        scheduledTask.stop();
+        scheduledTasks.forEach(task => task.stop());
     });
 })
