@@ -14,16 +14,15 @@ async function checkForFreeAppointments() {
     let freeAppointments = []
     try {
         freeAppointments = await scrapeAppointments();
+        if (!isEqual(latestFreeAppointments, freeAppointments)) {
+            if(freeAppointments.length > 0) {
+                await sendAppointmentsViaTelegram(freeAppointments);
+            } else {
+                await sendViaTelegram('Currently no free appointments.');
+            }
+            latestFreeAppointments = freeAppointments;
+        }
     } catch (error) {
         console.error(error);
-    }
-
-    if (!isEqual(latestFreeAppointments, freeAppointments)) {
-        if(freeAppointments.length > 0) {
-            await sendAppointmentsViaTelegram(freeAppointments);
-        } else {
-            await sendViaTelegram('Currently no free appointments.');
-        }
-        latestFreeAppointments = freeAppointments;
     }
 }

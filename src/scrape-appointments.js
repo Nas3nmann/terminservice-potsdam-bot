@@ -15,7 +15,7 @@ async function navigateToAppointmentCalendar(page) {
     const appointmentButton = await page.locator('#action_officeselect_termnew_prefix1333626470');
     await appointmentButton.click();
 
-    const concerns = [{id: '1333626504', count: 2}, {id: '1337591238', count: 1}];
+    const concerns = [{id: '1333626504', count: 1}];
     for (const concern of concerns) {
         const concernSelection = await page.locator(`#id_${concern.id}`).waitHandle();
         await concernSelection.select(`${concern.count}`);
